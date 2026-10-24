@@ -23,19 +23,31 @@ jobs:
         echo "APP_ID=${{ secrets.API_ID }}" > API_KEYS
         echo "APP_HASH=${{ secrets.API_HASH }}" >> API_KEYS
 
-    - name: 100% Fix CMake -j flag
+    - name: 100% Fix CMake (Python + Real Path)
       run: |
-        # 1. Находим путь к cmake
-        CMAKE_PATH=$(which cmake)
-        echo "Original CMake: $CMAKE_PATH"
-        
-        # 2. Переименовываем оригинальный cmake
-        sudo mv $CMAKE_PATH ${CMAKE_PATH}_original
-        
-        # 3. Создаем скрипт-обертку, который вырезает -j=16 и -j16 из аргументов
-        sudo tee $CMAKE_PATH > /dev/null << 'EOF'
+        # 1. Жестко вырезаем -j=16 из всех build.gradle через Python
+        python3 -c "
+        import os, re
+        for root, dirs, files in os.walk('.'):
+            for file in files:
+                if file == 'build.gradle':
+                    path = os.path.join(root, file)
+                    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    # Ищем любые вариации -j=16, -j16, -j 16
+                    content = re.sub(r'-j\s*=?\s*16', '', content)
+                    content = re.sub(r'-j16', '', content)
+                    with open(path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+        print('Gradle files patched')
+        "
+
+        # 2. Подменяем CMake по РЕАЛЬНОМУ пути из лога
+        CMAKE_REAL_PATH="/usr/local/lib/android/sdk/cmake/3.22.1/bin/cmake"
+        if [ -f "$CMAKE_REAL_PATH" ]; then
+            sudo mv $CMAKE_REAL_PATH ${CMAKE_REAL_PATH}_original
+            sudo tee $CMAKE_REAL_PATH > /dev/null << 'EOF'
         #!/bin/bash
-        # Убираем проблемные флаги из аргументов
         ARGS=()
         for arg in "$@"; do
             if [[ "$arg" == "-j=16" ]] || [[ "$arg" == "-j16" ]]; then
@@ -43,12 +55,13 @@ jobs:
             fi
             ARGS+=("$arg")
         done
-        # Вызываем оригинальный CMake с очищенными аргументами
         exec ${0}_original "${ARGS[@]}"
         EOF
-        
-        sudo chmod +x $CMAKE_PATH
-        echo "Wrapper created successfully"
+            sudo chmod +x $CMAKE_REAL_PATH
+            echo "CMake wrapper created at $CMAKE_REAL_PATH"
+        else
+            echo "CMake path not found!"
+        fi
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
