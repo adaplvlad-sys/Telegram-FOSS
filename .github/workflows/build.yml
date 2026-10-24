@@ -23,12 +23,32 @@ jobs:
         echo "APP_ID=${{ secrets.API_ID }}" > API_KEYS
         echo "APP_HASH=${{ secrets.API_HASH }}" >> API_KEYS
 
-    - name: Fix CMake Path (убираем кавычки)
+    - name: 100% Fix CMake -j flag
       run: |
-        # Ищем файлы build.gradle и убираем кавычки в путях
-        find . -name "build.gradle" -exec sed -i 's/"""//g' {} + || true
-        # Убираем лишние кавычки в CMakeLists.txt
-        find . -name "CMakeLists.txt" -exec sed -i 's/"""//g' {} + || true
+        # 1. Находим путь к cmake
+        CMAKE_PATH=$(which cmake)
+        echo "Original CMake: $CMAKE_PATH"
+        
+        # 2. Переименовываем оригинальный cmake
+        sudo mv $CMAKE_PATH ${CMAKE_PATH}_original
+        
+        # 3. Создаем скрипт-обертку, который вырезает -j=16 и -j16 из аргументов
+        sudo tee $CMAKE_PATH > /dev/null << 'EOF'
+        #!/bin/bash
+        # Убираем проблемные флаги из аргументов
+        ARGS=()
+        for arg in "$@"; do
+            if [[ "$arg" == "-j=16" ]] || [[ "$arg" == "-j16" ]]; then
+                continue
+            fi
+            ARGS+=("$arg")
+        done
+        # Вызываем оригинальный CMake с очищенными аргументами
+        exec ${0}_original "${ARGS[@]}"
+        EOF
+        
+        sudo chmod +x $CMAKE_PATH
+        echo "Wrapper created successfully"
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
