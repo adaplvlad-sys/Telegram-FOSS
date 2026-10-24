@@ -23,21 +23,19 @@ jobs:
         echo "APP_ID=${{ secrets.API_ID }}" > API_KEYS
         echo "APP_HASH=${{ secrets.API_HASH }}" >> API_KEYS
 
-    - name: Fix SDK paths
+    - name: Patch CMake (фикс ошибки -j=16)
       run: |
-        # Создаем local.properties с жестким путем к SDK
-        echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
-        
-        # Насильно удаляем ВСЕ файлы с версией 34x в системе (если они есть)
-        sudo find /usr/local/lib/android -name "source.properties" -exec sudo sed -i 's/34x/33/g' {} + || true
-        sudo find /usr/local/lib/android -name "source.properties" -exec sudo sed -i 's/ApiLevel=34/ApiLevel=33/g' {} + || true
+        # Убираем жестко заданный флаг -j=16 из Gradle
+        find . -name "*.gradle" -exec sed -i 's/-j=16//g' {} + || true
+        find . -name "CMakeLists.txt" -exec sed -i 's/-j=16//g' {} + || true
+        # Добавляем флаг, чтобы CMake не пытался использовать параллельную сборку
+        echo "org.gradle.parallel=false" >> gradle.properties
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: |
-        ./gradlew assembleAfatDebug --stacktrace --no-daemon -Pandroid.injected.build.api=33
+      run: ./gradlew assembleAfatDebug --stacktrace --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
