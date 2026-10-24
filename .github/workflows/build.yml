@@ -23,12 +23,18 @@ jobs:
         echo "APP_ID=${{ secrets.API_ID }}" > API_KEYS
         echo "APP_HASH=${{ secrets.API_HASH }}" >> API_KEYS
 
-    - name: Fix Gradle files (заменяем 34x на 33)
+    - name: Hack Android SDK (фикс ошибки 34x)
       run: |
-        # Ищем и заменяем 34x на 33 во всех build.gradle
-        find . -name "build.gradle" -exec sed -i 's/34x/33/g' {} +
-        find . -name "build.gradle" -exec sed -i 's/compileSdkVersion 34/compileSdkVersion 33/g' {} +
-        find . -name "build.gradle" -exec sed -i 's/compileSdkVersion 35/compileSdkVersion 33/g' {} +
+        # 1. Заставляем Gradle использовать конкретный путь к SDK
+        echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
+        
+        # 2. Перезаписываем системный файл source.properties, убирая "34x"
+        echo "Pkg.Desc=Android SDK Platform 33" > /usr/local/lib/android/sdk/platforms/android-33/source.properties
+        echo "AndroidVersion.ApiLevel=33" >> /usr/local/lib/android/sdk/platforms/android-33/source.properties
+        echo "Pkg.Revision=3" >> /usr/local/lib/android/sdk/platforms/android-33/source.properties
+        
+        # 3. Удаляем папку с 34-м SDK, чтобы Gradle даже не смотрел в её сторону
+        rm -rf /usr/local/lib/android/sdk/platforms/android-34 || true
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
