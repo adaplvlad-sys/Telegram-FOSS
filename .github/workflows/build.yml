@@ -26,10 +26,11 @@ jobs:
         echo "APP_ID=${{ secrets.API_ID }}" > API_KEYS
         echo "APP_HASH=${{ secrets.API_HASH }}" >> API_KEYS
 
-    - name: Fix compileSdkVersion
+    - name: Install Android SDK 33
       run: |
-        sed -i 's/compileSdkVersion 34/compileSdkVersion 33/g' TMessagesProj/build.gradle
-        sed -i 's/compileSdkVersion 35/compileSdkVersion 33/g' TMessagesProj/build.gradle
+        yes | sdkmanager --licenses || true
+        sdkmanager "platforms;android-33" "build-tools;33.0.2" || true
+        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
