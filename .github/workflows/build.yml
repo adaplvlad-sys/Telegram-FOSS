@@ -23,6 +23,12 @@ jobs:
         echo "APP_ID=${{ secrets.API_ID }}" > API_KEYS
         echo "APP_HASH=${{ secrets.API_HASH }}" >> API_KEYS
 
+    - name: Fix Android SDK Cache (Убираем версию 34x)
+      run: |
+        # Удаляем проблемный файл source.properties с версией 34x
+        rm -f /usr/local/lib/android/sdk/build-tools/34.0.0/source.properties || true
+        rm -f /usr/local/lib/android/sdk/platforms/android-34/source.properties || true
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
