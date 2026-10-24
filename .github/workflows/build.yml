@@ -23,11 +23,12 @@ jobs:
         echo "APP_ID=${{ secrets.API_ID }}" > API_KEYS
         echo "APP_HASH=${{ secrets.API_HASH }}" >> API_KEYS
 
-    - name: Fix Android SDK Cache (Убираем версию 34x)
+    - name: Fix Gradle files (заменяем 34x на 33)
       run: |
-        # Удаляем проблемный файл source.properties с версией 34x
-        rm -f /usr/local/lib/android/sdk/build-tools/34.0.0/source.properties || true
-        rm -f /usr/local/lib/android/sdk/platforms/android-34/source.properties || true
+        # Ищем и заменяем 34x на 33 во всех build.gradle
+        find . -name "build.gradle" -exec sed -i 's/34x/33/g' {} +
+        find . -name "build.gradle" -exec sed -i 's/compileSdkVersion 34/compileSdkVersion 33/g' {} +
+        find . -name "build.gradle" -exec sed -i 's/compileSdkVersion 35/compileSdkVersion 33/g' {} +
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
